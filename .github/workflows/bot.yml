@@ -328,10 +328,12 @@ jobs:
           if [[ -z "$CHAT_ID_FAILED" ]]; then
             CHAT_ID_FAILED="${{ secrets.TELEGRAM_TO }}"
           fi
+
+          # Menggunakan printf -v untuk menyimpan string dengan \n yang sudah diinterpretasi
+          # Semua variabel GitHub Actions (${{...}}) akan di-resolve sebelum shell menjalankan ini.
+          printf -v MESSAGE "❌ <b>PROSES GAGAL!</b> ❌\n\n━━━━━━━━━━━━━━━━━━━━━\n\n<b>👤 Request Dari:</b> ${{ env.REQUEST_USERNAME }}\n<b>📱 Android Version:</b> ${{ env.ANDROID_VERSION_INPUT }}\n\n‼️ <b>Log Kegagalan:</b> <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Lihat di GitHub Actions</a>\n\n<i>Mohon cek URL Framework atau hubungi Admin.</i>"
           
-          # Menggunakan double quotes dan \n untuk string yang lebih bersih
-          MESSAGE="❌ <b>PROSES GAGAL!</b> ❌\n\n━━━━━━━━━━━━━━━━━━━━━\n\n<b>👤 Request Dari:</b> ${{ env.REQUEST_USERNAME }}\n<b>📱 Android Version:</b> ${{ env.ANDROID_VERSION_INPUT }}\n\n‼️ <b>Log Kegagalan:</b> <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Lihat di GitHub Actions</a>\n\n<i>Mohon cek URL Framework atau hubungi Admin.</i>"
-          
+          # Menggunakan variabel shell $MESSAGE yang sudah di-escape dengan benar
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d chat_id="$CHAT_ID_FAILED" \
             -d text="$MESSAGE" \
