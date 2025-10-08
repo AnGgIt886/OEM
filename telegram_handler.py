@@ -5,10 +5,10 @@ import os
 from telegram.ext import Application, MessageHandler, filters 
 
 # --- KONFIGURASI ---
-# Token Bot Telegram Anda
+# Token Bot Telegram Anda (IDEALNYA DARI ENV VAR: os.getenv("TELEGRAM_BOT_TOKEN"))
 TELEGRAM_BOT_TOKEN = ""
 
-# Konfigurasi GitHub Anda
+# Konfigurasi GitHub Anda (IDEALNYA DARI ENV VAR)
 GITHUB_PAT = ""
 REPO_OWNER = "AnGgIt886" 
 REPO_NAME = "OEM"
@@ -32,9 +32,13 @@ async def trigger_github_action(payload_data, update):
     try:
         response = requests.post(GITHUB_API_URL, headers=headers, json=body)
         
+        # Tambahkan tautan ke Action Run di pesan sukses
+        # Catatan: Kita tidak bisa mendapatkan run_id spesifik dari sini, jadi kirim tautan umum
+        workflow_url = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/actions"
+        
         if response.status_code == 204:
             await update.message.reply_text(
-                text=f"✅ **Request Diterima!**\n\nAndroid: `{payload_data['android_version']}`\nPengirim: {payload_data['username']}\n\nMemulai proses *patch* di GitHub Actions...",
+                text=f"✅ **Request Diterima!**\n\nAndroid: `{payload_data['android_version']}`\nPengirim: {payload_data['username']}\n\nMemulai proses *patch* di GitHub Actions...\n\n[Lihat Status Umum di GitHub]({workflow_url})",
                 parse_mode=telegram.constants.ParseMode.MARKDOWN
             )
         else:
@@ -58,6 +62,9 @@ async def handle_message(update, context):
     text = message.text
     sender = message.from_user
 
+    # Dapatkan Chat ID Pengirim (DIGUNAKAN UNTUK NOTIFIKASI BALIK)
+    request_chat_id = message.chat_id 
+
     # Dapatkan Username Pengirim
     if sender.username:
         request_username = f"@{sender.username}"
@@ -78,7 +85,8 @@ async def handle_message(update, context):
             payload = {
                 "android_version": android_version,
                 "framework_url": framework_url,
-                "username": request_username
+                "username": request_username,
+                "chat_id": request_chat_id  # <-- PENAMBAHAN FITUR
             }
             
             # Panggil fungsi trigger sebagai async
@@ -92,6 +100,11 @@ async def handle_message(update, context):
 
 # Fungsi main yang menggunakan Application
 def main():
+    # Pastikan token sudah diisi, jika tidak menggunakan env var
+    if not TELEGRAM_BOT_TOKEN:
+        print("ERROR: TELEGRAM_BOT_TOKEN belum diisi!")
+        return
+        
     # Menggunakan Application.builder() adalah cara modern dan stabil
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
@@ -104,4 +117,6 @@ def main():
     application.run_polling() 
 
 if __name__ == '__main__':
+    # Anda harus mengisi TELEGRAM_BOT_TOKEN dan GITHUB_PAT di awal file ini
+    # Atau ubah untuk mengambil dari environment variables untuk keamanan
     main()

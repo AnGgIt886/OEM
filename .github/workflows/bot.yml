@@ -6,11 +6,11 @@ on:
     types: [telegram_request] # Tipe event yang akan dipicu oleh Bot Telegram Anda
 
 env:
-  NDK_VERSION: '28.2.13676358'
+  NDK_VERSION: '29.0.14206865'
   CMDLINE_TOOLS_VERSION: '12266719'
 
 jobs:
-  setup-environment:
+  patch_job:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -29,11 +29,14 @@ jobs:
           ANDROID_VERSION="${{ github.event.client_payload.android_version }}"
           FRAMEWORK_URL="${{ github.event.client_payload.framework_url }}"
           USERNAME="${{ github.event.client_payload.username }}"
+          # Ambil chat_id untuk notifikasi
+          CHAT_ID="${{ github.event.client_payload.chat_id }}"
+          
           if [[ -z "$USERNAME" ]]; then
               USERNAME="Anonymous/Unknown"
           fi
           
-          echo "Processing Request: Android=$ANDROID_VERSION, URL=$FRAMEWORK_URL, User=$USERNAME"
+          echo "Processing Request: Android=$ANDROID_VERSION, URL=$FRAMEWORK_URL, User=$USERNAME, ChatID=$CHAT_ID"
           
           # Validasi Android version
           if [[ ! "$ANDROID_VERSION" =~ ^(12|13|14|15|16)$ ]]; then
@@ -51,10 +54,11 @@ jobs:
           echo "ANDROID_VERSION_INPUT=$ANDROID_VERSION" >> $GITHUB_ENV
           echo "FRAMEWORK_URL_INPUT=$FRAMEWORK_URL" >> $GITHUB_ENV
           echo "REQUEST_USERNAME=$USERNAME" >> $GITHUB_ENV
+          echo "REQUEST_CHAT_ID=$CHAT_ID" >> $GITHUB_ENV # <-- Tambahkan Chat ID ke ENV
           
           echo "✅ Input validation passed for: $ANDROID_VERSION, $FRAMEWORK_URL"
 
-      # Langkah 2: Setup Android Version
+      # ... (Langkah 2: Setup Android Version, Setup Android SDK, Install Tools, Install NDK, Clone Source tetap sama) ...
       - name: Setup Android Version
         run: |
           case "${{ env.ANDROID_VERSION_INPUT }}" in
@@ -123,7 +127,6 @@ jobs:
           
           echo "✅ NDK installed at: $NDK_PATH"
 
-      # --- PERBAIKAN DITERAPKAN DI SINI ---
       - name: Verify NDK Installation
         run: |
           echo "🔍 Verifying NDK installation..."
@@ -305,28 +308,54 @@ jobs:
             exit 1
           fi
           
-          FILESIZE=$(stat -c%s "$FRAMEWORK_PATH" 2>/dev/null || stat -f%z "$FRAMEWORK_PATH")
+          FILESIZE=$(stat -c%s "$FRAMEWORK_PATH" 2>/dev/null || stat -f%z "framework.jar")
           if [ "$FILESIZE" -lt 1000 ]; then
             echo "❌ Error: Patched framework.jar seems too small, patching might have failed"
             exit 1
           fi
           
           echo "✅ Patched framework verification successful"
-
-      # Langkah 5: Upload ke Telegram
-      - name: Upload to Telegram
+          
+      # --- PENAMBAHAN FITUR: LAPORAN KEGAGALAN ---
+      - name: Report CI Failure to Telegram
+        if: ${{ failure() }} # Hanya berjalan jika ada langkah sebelumnya yang gagal
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }} 
+          CHAT_ID: ${{ env.REQUEST_CHAT_ID }} # Ambil dari ENV yang sudah diset di Langkah 1
         run: |
+          echo "❌ CI FAILED. Notifying user via Telegram..."
+          
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          MESSAGE=$'❌ <b>PROSES GAGAL!</b> ❌\n\n━━━━━━━━━━━━━━━━━━━━━\n\n<b>👤 Request Dari:</b> ${{ env.REQUEST_USERNAME }}\n<b>📱 Android Version:</b> ${{ env.ANDROID_VERSION_INPUT }}\n\n‼️ **Log Kegagalan:** <a href="'"$RUN_URL"'">Lihat di GitHub Actions</a>\n\n<i>Mohon cek URL Framework atau hubungi Admin.</i>'
+          
+          curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
+            -d chat_id="$CHAT_ID" \
+            -d text="$MESSAGE" \
+            -d parse_mode="html"
+
+      # --- PENAMBAHAN FITUR: UPLOAD KE PENGGUNA (SUKSES) ---
+      - name: Upload to Telegram (Success)
+        if: success()
+        run: |
+          CHAT_ID_SUCCESS="${{ env.REQUEST_CHAT_ID }}"
+          
+          # Fallback (misalnya dipicu manual tanpa chat_id)
+          if [[ -z "$CHAT_ID_SUCCESS" ]]; then
+            CHAT_ID_SUCCESS="${{ secrets.TELEGRAM_TO }}"
+          fi
+          
           curl -F document=@"${{ github.workspace }}/OEM/framework_patcher/framework.jar" "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendDocument" \
-            -F chat_id="${{ secrets.TELEGRAM_TO }}" \
+            -F chat_id="$CHAT_ID_SUCCESS" \
             -F "disable_web_page_preview=true" \
             -F "parse_mode=html" \
-            -F caption=$'🎉 <b>Framework Patching Completed Successfully!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n📋 <b>Build Information</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 <b>Request From:</b> ${{ env.REQUEST_USERNAME }}\n📱 <b>Android Version:</b> ${{ env.ANDROID_VERSION_INPUT }}\n🔧 <b>SDK Version:</b> ${{ env.ANDROID_SDK_VERSION }}\n\n━━━━━━━━━━━━━━━━━━━━━\n💡 <b>Note</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ File ini adalah <code>framework.jar</code> yang telah dipatch untuk keperluan OEM Porting Android.\n📦 <i>File siap digunakan untuk modifikasi dan custom ROM development.</i>'
+            -F caption=$'🎉 <b>Framework Patching Completed Successfully!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n📋 <b>Build Information</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 <b>Request From:</b> ${{ env.REQUEST_USERNAME }}\n📱 <b>Android Version:</b> ${{ env.ANDROID_VERSION_INPUT }}\n🔧 <b>SDK Version:</b> ${{ env.ANDROID_SDK_VERSION }}\n\n━━━━━━━━━━━━━━━━━━━━━\n💡 <b>Note</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n✅ File ini telah dikirimkan ke Chat Anda.\n📦 <i>File siap digunakan untuk modifikasi dan custom ROM development.</i>'
 
-      # Langkah 6: Success Message
+      # Langkah 6: Success Message (untuk log GitHub Actions)
       - name: Success Message
         if: success()
         run: |
           echo "🎉 Framework patching completed successfully!"
           echo "📱 Android Version: ${{ env.ANDROID_VERSION_INPUT }}"
           echo "🔧 SDK Version: ${{ env.ANDROID_SDK_VERSION }}"
-          echo "📤 Uploaded to Telegram successfully!"
+          echo "📤 Uploaded to Telegram successfully to chat ID: ${{ env.REQUEST_CHAT_ID }}"
