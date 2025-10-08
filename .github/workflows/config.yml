@@ -351,21 +351,13 @@ jobs:
           
           echo "✅ Patched framework verification successful"
 
-      - name: Upload Artifact to GitHub
-        uses: actions/upload-artifact@v4
-        with:
-          name: fwpatch-android-${{ github.event.inputs.android_version }}
-          path: ${{ github.workspace }}/OEM/framework_patcher/framework.jar
-          retention-days: 7
-          compression-level: 0
-
       - name: Upload to Telegram
         run: |
           curl -F document=@"${{ github.workspace }}/OEM/framework_patcher/framework.jar" "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendDocument" \
             -F chat_id="${{ secrets.TELEGRAM_TO }}" \
             -F "disable_web_page_preview=true" \
             -F "parse_mode=html" \
-            -F caption=$'🎉 <b>Framework Patching Completed Successfully!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n📋 <b>Build Information</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 <b>Request From:</b> ${{ github.event.inputs.username }}\n📱 <b>Android Version:</b> ${{ github.event.inputs.android_version }}\n🔧 <b>SDK Version:</b> ${{ env.ANDROID_SDK_VERSION }}\n🏷️ <b>Artifact Name:</b> <code>fwpatch-android-${{ github.event.inputs.android_version }}</code>\n\n━━━━━━━━━━━━━━━━━━━━━\n💡 <b>Note</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ File ini adalah <code>framework.jar</code> yang telah dipatch untuk keperluan OEM Porting Android.\n📦 <i>File siap digunakan untuk modifikasi dan custom ROM development.</i>'
+            -F caption=$'🎉 <b>Framework Patching Completed Successfully!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n📋 <b>Build Information</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 <b>Request From:</b> ${{ github.event.inputs.username }}\n📱 <b>Android Version:</b> ${{ github.event.inputs.android_version }}\n🔧 <b>SDK Version:</b> ${{ env.ANDROID_SDK_VERSION }}\n\n━━━━━━━━━━━━━━━━━━━━━\n💡 <b>Note</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ File ini adalah <code>framework.jar</code> yang telah dipatch untuk keperluan OEM Porting Android.\n📦 <i>File siap digunakan untuk modifikasi dan custom ROM development.</i>'
 
       - name: Success Message
         if: success()
@@ -373,5 +365,4 @@ jobs:
           echo "🎉 Framework patching completed successfully!"
           echo "📱 Android Version: ${{ github.event.inputs.android_version }}"
           echo "🔧 SDK Version: ${{ env.ANDROID_SDK_VERSION }}"
-          echo "📦 Artifact: fwpatch-android-${{ github.event.inputs.android_version }}"
           echo "📤 Uploaded to Telegram successfully!"

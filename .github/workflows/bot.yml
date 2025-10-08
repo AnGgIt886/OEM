@@ -3,7 +3,7 @@ name: OemPorts10T
 on:
   # Pemicu diubah ke repository_dispatch untuk menerima request dari API eksternal (Telegram Bot)
   repository_dispatch:
-    types: [telegram_request] # Tipe event yang harus dikirim oleh Bot Telegram Anda
+    types: [telegram_request] # Tipe event yang akan dipicu oleh Bot Telegram Anda
 
 env:
   NDK_VERSION: '28.2.13676358'
@@ -25,10 +25,9 @@ jobs:
       # Langkah 1: Validasi dan Set Environment Variables dari client_payload
       - name: Validate and Set Inputs
         run: |
-          # Ambil data langsung dari client_payload yang dikirim Bot Telegram
+          # Ambil data dari payload yang dikirim oleh Bot Telegram
           ANDROID_VERSION="${{ github.event.client_payload.android_version }}"
           FRAMEWORK_URL="${{ github.event.client_payload.framework_url }}"
-          # Fallback jika username kosong (seharusnya sudah diurus oleh Bot)
           USERNAME="${{ github.event.client_payload.username }}"
           if [[ -z "$USERNAME" ]]; then
               USERNAME="Anonymous/Unknown"
@@ -139,7 +138,7 @@ jobs:
         run: |
           git clone ${{ secrets.OEM_URL }} OEM
 
-      # Langkah 3: Download Framework (Menggunakan ENV baru)
+      # Langkah 3: Download Framework
       - name: Download Framework
         id: download-framework
         run: |
@@ -311,23 +310,14 @@ jobs:
           
           echo "✅ Patched framework verification successful"
 
-      # Langkah 4: Upload Artifact
-      - name: Upload Artifact to GitHub
-        uses: actions/upload-artifact@v4
-        with:
-          name: fwpatch-android-${{ env.ANDROID_VERSION_INPUT }}
-          path: ${{ github.workspace }}/OEM/framework_patcher/framework.jar
-          retention-days: 7
-          compression-level: 0
-
-      # Langkah 5: Upload ke Telegram (Menggunakan ENV baru)
+      # Langkah 5: Upload ke Telegram
       - name: Upload to Telegram
         run: |
           curl -F document=@"${{ github.workspace }}/OEM/framework_patcher/framework.jar" "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendDocument" \
             -F chat_id="${{ secrets.TELEGRAM_TO }}" \
             -F "disable_web_page_preview=true" \
             -F "parse_mode=html" \
-            -F caption=$'🎉 <b>Framework Patching Completed Successfully!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n📋 <b>Build Information</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 <b>Request From:</b> ${{ env.REQUEST_USERNAME }}\n📱 <b>Android Version:</b> ${{ env.ANDROID_VERSION_INPUT }}\n🔧 <b>SDK Version:</b> ${{ env.ANDROID_SDK_VERSION }}\n🏷️ <b>Artifact Name:</b> <code>fwpatch-android-${{ env.ANDROID_VERSION_INPUT }}</code>\n\n━━━━━━━━━━━━━━━━━━━━━\n💡 <b>Note</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ File ini adalah <code>framework.jar</code> yang telah dipatch untuk keperluan OEM Porting Android.\n📦 <i>File siap digunakan untuk modifikasi dan custom ROM development.</i>'
+            -F caption=$'🎉 <b>Framework Patching Completed Successfully!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n📋 <b>Build Information</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 <b>Request From:</b> ${{ env.REQUEST_USERNAME }}\n📱 <b>Android Version:</b> ${{ env.ANDROID_VERSION_INPUT }}\n🔧 <b>SDK Version:</b> ${{ env.ANDROID_SDK_VERSION }}\n\n━━━━━━━━━━━━━━━━━━━━━\n💡 <b>Note</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ File ini adalah <code>framework.jar</code> yang telah dipatch untuk keperluan OEM Porting Android.\n📦 <i>File siap digunakan untuk modifikasi dan custom ROM development.</i>'
 
       # Langkah 6: Success Message
       - name: Success Message
@@ -336,5 +326,4 @@ jobs:
           echo "🎉 Framework patching completed successfully!"
           echo "📱 Android Version: ${{ env.ANDROID_VERSION_INPUT }}"
           echo "🔧 SDK Version: ${{ env.ANDROID_SDK_VERSION }}"
-          echo "📦 Artifact: fwpatch-android-${{ env.ANDROID_VERSION_INPUT }}"
           echo "📤 Uploaded to Telegram successfully!"
