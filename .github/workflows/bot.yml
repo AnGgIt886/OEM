@@ -123,15 +123,18 @@ jobs:
           
           echo "✅ NDK installed at: $NDK_PATH"
 
+      # --- PERBAIKAN DITERAPKAN DI SINI ---
       - name: Verify NDK Installation
         run: |
           echo "🔍 Verifying NDK installation..."
+          # Menggunakan $NDK_HOME yang telah diekspor ke GITHUB_ENV
           if [ ! -d "$NDK_HOME" ]; then
-            echo "❌ Error: NDK directory not found"
+            echo "❌ Error: NDK directory not found at $NDK_HOME"
             exit 1
           fi
           
-          ls -la "$NDK_PATH" || exit 1
+          # Menggunakan $NDK_HOME yang telah diekspor
+          ls -la "$NDK_HOME" || exit 1 
           echo "✅ NDK verification successful"
 
       - name: Clone Source
