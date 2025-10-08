@@ -38,6 +38,12 @@ jobs:
           
           echo "Processing Request: Android=$ANDROID_VERSION, URL=$FRAMEWORK_URL, User=$USERNAME, ChatID=$CHAT_ID"
           
+          # Set Environment Variables agar dapat diakses di langkah-langkah selanjutnya
+          echo "ANDROID_VERSION_INPUT=$ANDROID_VERSION" >> $GITHUB_ENV
+          echo "FRAMEWORK_URL_INPUT=$FRAMEWORK_URL" >> $GITHUB_ENV
+          echo "REQUEST_USERNAME=$USERNAME" >> $GITHUB_ENV
+          echo "REQUEST_CHAT_ID=$CHAT_ID" >> $GITHUB_ENV # <-- Tambahkan Chat ID ke ENV
+          
           # Validasi Android version
           if [[ ! "$ANDROID_VERSION" =~ ^(12|13|14|15|16)$ ]]; then
             echo "❌ Error: Invalid Android version ($ANDROID_VERSION). Must be 12, 13, 14, 15, or 16"
@@ -49,12 +55,6 @@ jobs:
             echo "❌ Error: Framework URL cannot be empty"
             exit 1
           fi
-          
-          # Set Environment Variables agar dapat diakses di langkah-langkah selanjutnya
-          echo "ANDROID_VERSION_INPUT=$ANDROID_VERSION" >> $GITHUB_ENV
-          echo "FRAMEWORK_URL_INPUT=$FRAMEWORK_URL" >> $GITHUB_ENV
-          echo "REQUEST_USERNAME=$USERNAME" >> $GITHUB_ENV
-          echo "REQUEST_CHAT_ID=$CHAT_ID" >> $GITHUB_ENV # <-- Tambahkan Chat ID ke ENV
           
           echo "✅ Input validation passed for: $ANDROID_VERSION, $FRAMEWORK_URL"
 
