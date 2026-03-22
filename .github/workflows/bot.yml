@@ -1,4 +1,4 @@
-name: OemPorts10T
+name: OemPorts10T [bot]
 
 on:
   # Pemicu diubah ke repository_dispatch untuk menerima request dari API eksternal (Telegram Bot)
